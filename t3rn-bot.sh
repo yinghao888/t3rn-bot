@@ -162,10 +162,10 @@ EOL
     echo "配置完成，正在通过 screen 运行 bot.py..."
 
     # 使用 screen 后台运行 bot.py
-    screen -dmS t3rn-bot python3 $BOT_FILE
+    screen -dmS t3rn python3 $BOT_FILE
 
     # 输出信息
-    echo "bot.py 已在后台运行，您可以通过 'screen -r t3rn-bot' 查看运行日志。"
+    echo "bot.py 已在后台运行，您可以通过 'screen -r t3rn' 查看运行日志。"
 
     # 提示用户按任意键返回主菜单
     read -n 1 -s -r -p "按任意键返回主菜单..."
