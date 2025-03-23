@@ -1,213 +1,172 @@
-# 导入 Web3 库
-from web3 import Web3
-from eth_account import Account
-import time
-import sys
-import os
-import random  # 引入随机模块
+#!/bin/bash
 
-# 数据桥接配置
-from data_bridge import data_bridge
-from keys_and_addresses import private_keys, labels  # 不再读取 my_addresses
-from network_config import networks
+# 脚本保存路径
+SCRIPT_PATH="$HOME/t3rn-bot.sh"
 
-# 文本居中函数
-def center_text(text):
-    terminal_width = os.get_terminal_size().columns
-    lines = text.splitlines()
-    centered_lines = [line.center(terminal_width) for line in lines]
-    return "\n".join(centered_lines)
+# 定义仓库地址和目录名称
+REPO_URL="https://github.com/sdohuajia/t3rn-bot.git"
+DIR_NAME="t3rn-bot"
+PYTHON_FILE="keys_and_addresses.py"
+DATA_BRIDGE_FILE="data_bridge.py"
+BOT_FILE="bot.py"
+VENV_DIR="t3rn-env"  # 虚拟环境目录
 
-# 清理终端函数
-def clear_terminal():
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-description = """
-自动桥接机器人  https://unlock3d.t3rn.io/rewards
-还是继续操你麻痹Rambeboy,偷私钥🐶  V2版本
-"""
-
-# 每个链的颜色和符号
-chain_symbols = {
-    'Arbitrum': '\033[34m',  # 更新为 Arbitrum 链的颜色
-    'OP Sepolia': '\033[91m',         
+# 主菜单函数
+function main_menu() {
+    while true; do
+        clear
+        echo "脚本由大赌社区哈哈哈哈编写，推特 @ferdie_jhovie，免费开源，请勿相信收费"
+        echo "如有问题，可联系推特，仅此只有一个号"
+        echo "================================================================"
+        echo "退出脚本，请按键盘 ctrl + C 退出即可"
+        echo "请选择要执行的操作:"
+        echo "1. 执行t3rn跨链脚本"
+        echo "2. 退出"
+        
+        read -p "请输入选项 (1/2): " option
+        case $option in
+            1)
+                execute_cross_chain_script
+                ;;
+            2)
+                echo "退出脚本。"
+                exit 0
+                ;;
+            *)
+                echo "无效选项，请重新选择。"
+                sleep 2
+                ;;
+        esac
+    done
 }
 
-# 颜色定义
-green_color = '\033[92m'
-reset_color = '\033[0m'
-menu_color = '\033[95m'  # 菜单文本颜色
+# 执行跨链脚本
+function execute_cross_chain_script() {
+    # 检查是否为root用户
+    if [ "$EUID" -ne 0 ];then 
+        echo "请使用 sudo 运行此脚本"
+        exit 1
+    fi
 
-# 每个网络的区块浏览器URL
-explorer_urls = {
-    'Arbitrum': 'https://sepolia.arbitrum.io', 
-    'OP Sepolia': 'https://sepolia-optimism.etherscan.io/tx/',
-    'b2n': 'https://b2n.explorer.caldera.xyz/tx/'
+    # 检查是否安装了 git
+    if ! command -v git &> /dev/null; then
+        echo "Git 未安装，请先安装 Git。"
+        exit 1
+    fi
+
+    # 检查是否安装了 python3-pip 和 python3-venv
+    if ! command -v pip3 &> /dev/null; then
+        echo "pip 未安装，正在安装 python3-pip..."
+        sudo apt update
+        sudo apt install -y python3-pip
+    fi
+
+    if ! command -v python3 -m venv &> /dev/null; then
+        echo "python3-venv 未安装，正在安装 python3-venv..."
+        sudo apt update
+        sudo apt install -y python3-venv
+    fi
+
+    # 拉取仓库
+    if [ -d "$DIR_NAME" ]; then
+        echo "目录 $DIR_NAME 已存在，拉取最新更新..."
+        cd "$DIR_NAME" || exit
+        git pull origin main
+    else
+        echo "正在克隆仓库 $REPO_URL..."
+        git clone "$REPO_URL"
+        cd "$DIR_NAME" || exit
+    fi
+
+    echo "已进入目录 $DIR_NAME"
+
+    # 创建虚拟环境并激活
+    echo "正在创建虚拟环境..."
+    python3 -m venv "$VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+
+    # 升级 pip
+    echo "正在升级 pip..."
+    pip install --upgrade pip
+
+    # 安装依赖
+    echo "正在安装依赖 web3 和 colorama..."
+    pip install web3 colorama
+
+    # 提醒用户私钥安全
+    echo "警告：请务必确保您的私钥安全！"
+    echo "私钥应当保存在安全的位置，切勿公开分享或泄漏给他人。"
+    echo "如果您的私钥被泄漏，可能导致您的资产丧失！"
+    echo "请输入您的私钥，确保安全操作。"
+
+    # 让用户输入私钥和标签
+    echo "请输入您的私钥（多个私钥以空格分隔）："
+    read -r private_keys_input
+
+    echo "请输入您的标签（多个标签以空格分隔，与私钥顺序一致）："
+    read -r labels_input
+
+    # 检查输入是否一致
+    IFS=' ' read -r -a private_keys <<< "$private_keys_input"
+    IFS=' ' read -r -a labels <<< "$labels_input"
+
+    if [ "${#private_keys[@]}" -ne "${#labels[@]}" ]; then
+        echo "私钥和标签数量不一致，请重新运行脚本并确保它们匹配！"
+        exit 1
+    fi
+
+    # 写入 keys_and_addresses.py 文件
+    echo "正在写入 $PYTHON_FILE 文件..."
+    cat > $PYTHON_FILE <<EOL
+# 此文件由脚本生成
+
+private_keys = [
+$(printf "    '%s',\n" "${private_keys[@]}")
+]
+
+labels = [
+$(printf "    '%s',\n" "${labels[@]}")
+]
+EOL
+
+    echo "$PYTHON_FILE 文件已生成。"
+
+    # 提醒用户私钥安全
+    echo "脚本执行完成！所有依赖已安装，私钥和标签已保存到 $PYTHON_FILE 中。"
+    echo "请务必妥善保管此文件，避免泄露您的私钥和标签信息！"
+
+    # 获取用户标签地址并去掉0x前缀
+    arbitrum_address="${labels[0]#0x}"
+    op_address="${labels[1]#0x}"
+
+    # 写入 data_bridge.py 文件
+    echo "正在写入 $DATA_BRIDGE_FILE 文件..."
+    cat > $DATA_BRIDGE_FILE <<EOL
+# 此文件由脚本生成
+
+data_bridge = {
+    # Data bridge Arbitrum
+    "Arbitrum - OP Sepolia": "0x56591d59756e697400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004${arbitrum_address}0000000000000000000000000000000000000000000000000166a6f1454d1920000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000166d2f702508000",
+
+    # Data bridge OP Sepolia
+    "OP - Arbitrum": "0x56591d5961726274000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000${op_address}000000000000000000000000000000000000000000000000016315a15fcfc5a800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016345785d8a0000",
+}
+EOL
+
+    echo "$DATA_BRIDGE_FILE 文件已生成。"
+
+    # 提醒用户运行 bot.py
+    echo "配置完成，正在通过 screen 运行 bot.py..."
+
+    # 使用 screen 后台运行 bot.py
+    screen -dmS t3rn python3 $BOT_FILE
+
+    # 输出信息
+    echo "bot.py 已在后台运行，您可以通过 'screen -r t3rn' 查看运行日志。"
+
+    # 提示用户按任意键返回主菜单
+    read -n 1 -s -r -p "按任意键返回主菜单..."
 }
 
-# 获取b2n余额的函数
-def get_b2n_balance(web3, my_address):
-    balance = web3.eth.get_balance(my_address)
-    return web3.from_wei(balance, 'ether')
-
-# 检查链的余额函数
-def check_balance(web3, my_address):
-    balance = web3.eth.get_balance(my_address)
-    return web3.from_wei(balance, 'ether')
-
-# 创建和发送交易的函数
-def send_bridge_transaction(web3, account, my_address, data, network_name):
-    nonce = web3.eth.get_transaction_count(my_address, 'pending')
-    value_in_ether = 0.101
-    value_in_wei = web3.to_wei(value_in_ether, 'ether')
-
-    try:
-        gas_estimate = web3.eth.estimate_gas({
-            'to': networks[network_name]['contract_address'],
-            'from': my_address,
-            'data': data,
-            'value': value_in_wei
-        })
-        gas_limit = gas_estimate + 50000  # 增加安全边际
-    except Exception as e:
-        print(f"估计gas错误: {e}")
-        return None
-
-    base_fee = web3.eth.get_block('latest')['baseFeePerGas']
-    priority_fee = web3.to_wei(5, 'gwei')
-    max_fee = base_fee + priority_fee
-
-    transaction = {
-        'nonce': nonce,
-        'to': networks[network_name]['contract_address'],
-        'value': value_in_wei,
-        'gas': gas_limit,
-        'maxFeePerGas': max_fee,
-        'maxPriorityFeePerGas': priority_fee,
-        'chainId': networks[network_name]['chain_id'],
-        'data': data
-    }
-
-    try:
-        signed_txn = web3.eth.account.sign_transaction(transaction, account.key)
-    except Exception as e:
-        print(f"签名交易错误: {e}")
-        return None
-
-    try:
-        tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
-        tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
-
-        # 获取最新余额
-        balance = web3.eth.get_balance(my_address)
-        formatted_balance = web3.from_wei(balance, 'ether')
-
-        # 获取区块浏览器链接
-        explorer_link = f"{explorer_urls[network_name]}{web3.to_hex(tx_hash)}"
-
-        # 显示交易信息
-        print(f"{green_color}📤 发送地址: {account.address}")
-        print(f"⛽ 使用Gas: {tx_receipt['gasUsed']}")
-        print(f"🗳️  区块号: {tx_receipt['blockNumber']}")
-        print(f"💰 ETH余额: {formatted_balance} ETH")
-        b2n_balance = get_b2n_balance(Web3(Web3.HTTPProvider('https://b2n.rpc.caldera.xyz/http')), my_address)
-        print(f"🔵 b2n余额: {b2n_balance} b2n")
-        print(f"🔗 区块浏览器链接: {explorer_link}\n{reset_color}")
-
-        return web3.to_hex(tx_hash), value_in_ether
-    except Exception as e:
-        print(f"发送交易错误: {e}")
-        return None, None
-
-# 在特定网络上处理交易的函数
-def process_network_transactions(network_name, bridges, chain_data, successful_txs):
-    web3 = Web3(Web3.HTTPProvider(chain_data['rpc_url']))
-
-    # 如果无法连接，重试直到成功
-    while not web3.is_connected():
-        print(f"无法连接到 {network_name}，正在尝试重新连接...")
-        time.sleep(5)  # 等待 5 秒后重试
-        web3 = Web3(Web3.HTTPProvider(chain_data['rpc_url']))
-    
-    print(f"成功连接到 {network_name}")
-
-    for bridge in bridges:
-        for i, private_key in enumerate(private_keys):
-            account = Account.from_key(private_key)
-
-            # 通过私钥生成地址
-            my_address = account.address
-
-            data = data_bridge.get(bridge)  # 确保 data_bridge 是字典类型
-            if not data:
-                print(f"桥接 {bridge} 数据不可用!")
-                continue
-
-            result = send_bridge_transaction(web3, account, my_address, data, network_name)
-            if result:
-                tx_hash, value_sent = result
-                successful_txs += 1
-
-                # 检查 value_sent 是否有效再格式化
-                if value_sent is not None:
-                    print(f"{chain_symbols[network_name]}🚀 成功交易总数: {successful_txs} | {labels[i]} | 桥接: {bridge} | 桥接金额: {value_sent:.5f} ETH ✅{reset_color}\n")
-                else:
-                    print(f"{chain_symbols[network_name]}🚀 成功交易总数: {successful_txs} | {labels[i]} | 桥接: {bridge} ✅{reset_color}\n")
-
-                print(f"{'='*150}")
-                print("\n")
-            
-            # 随机等待 120 到 180 秒
-            wait_time = random.uniform(120, 180)
-            print(f"⏳ 等待 {wait_time:.2f} 秒后继续...\n")
-            time.sleep(wait_time)  # 随机延迟时间
-
-    return successful_txs
-
-# 显示链选择菜单的函数
-def display_menu():
-    print(f"{menu_color}选择要运行交易的链:{reset_color}")
-    print(" ")
-    print(f"{chain_symbols['Arbitrum']}1. Arbitrum -> OP Sepolia{reset_color}")
-    print(f"{chain_symbols['OP Sepolia']}2. OP -> Arbitrum{reset_color}")
-    print(f"{menu_color}3. 运行所有链{reset_color}")
-    print(" ")
-    choice = input("输入选择 (1-3): ")
-    return choice
-
-def main():
-    print("\033[92m" + center_text(description) + "\033[0m")
-    print("\n\n")
-
-    successful_txs = 0
-    current_network = 'Arbitrum'  # 默认从 Arbitrum 链开始
-    alternate_network = 'OP Sepolia'
-
-    while True:
-        # 检查当前网络余额是否足够
-        web3 = Web3(Web3.HTTPProvider(networks[current_network]['rpc_url']))
-        
-        # 如果无法连接，尝试重新连接
-        while not web3.is_connected():
-            print(f"无法连接到 {current_network}，正在尝试重新连接...")
-            time.sleep(5)  # 等待 5 秒后重试
-            web3 = Web3(Web3.HTTPProvider(networks[current_network]['rpc_url']))
-        
-        print(f"成功连接到 {current_network}")
-        
-        my_address = Account.from_key(private_keys[0]).address  # 使用第一个私钥的地址
-        balance = check_balance(web3, my_address)
-
-        # 如果余额不足 0.101 ETH，切换到另一个链
-        if balance < 0.101:
-            print(f"{chain_symbols[current_network]}{current_network}余额不足 0.101 ETH，切换到 {alternate_network}{reset_color}")
-            current_network, alternate_network = alternate_network, current_network  # 交换链
-
-        # 处理当前链的交易
-        successful_txs = process_network_transactions(current_network, ["Arbitrum - OP Sepolia"] if current_network == 'Arbitrum' else ["OP - Arbitrum"], networks[current_network], successful_txs)
-
-        # 自动切换网络
-        time.sleep(random.uniform(30, 60))  # 在每次切换网络时增加随机的延时
-
-if __name__ == "__main__":
-    main()
+# 启动主菜单
+main_menu
