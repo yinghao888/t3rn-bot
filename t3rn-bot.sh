@@ -133,7 +133,7 @@ EOL
     echo "请务必妥善保管此文件，避免泄露您的私钥和标签信息！"
 
     # 获取用户标签地址并去掉0x前缀
-    arbitrum_address="${labels[0]#0x}"
+    uni_address="${labels[0]#0x}"
     op_address="${labels[1]#0x}"
 
     # 写入 data_bridge.py 文件
