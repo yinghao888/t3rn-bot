@@ -1,11 +1,11 @@
 # network_config.py
 
 networks = {
-    'Arbitrum': {
-        'rpc_url': 'https://go.getblock.io/868382d71fcc4169bf248df24ffbfb83', 
-        'chain_id': 421614,  
+    'uni': {
+        'rpc_url': 'https://unichain-sepolia.drpc.org', 
+        'chain_id': 1301,  
         'contract_address': 
-        '0x22B65d0B9b59af4D3Ed59F18b9Ad53f5F4908B54'  
+        '0x1cEAb5967E5f078Fa0FEC3DFfD0394Af1fEeBCC9'  
     },
     'OP Sepolia': {
         'rpc_url': 'https://go.getblock.io/6a87203a95204612ad1a8e38e182055b',
