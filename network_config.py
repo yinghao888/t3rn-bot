@@ -1,7 +1,7 @@
 # network_config.py
 
 networks = {
-    'uni': {
+    'unichain sepolia': {
         'rpc_url': 'https://unichain-sepolia.drpc.org', 
         'chain_id': 1301,  
         'contract_address': 
